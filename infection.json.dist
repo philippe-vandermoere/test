@@ -1,0 +1,22 @@
+{
+    "timeout": 10,
+    "source": {
+        "directories": [
+            "src"
+        ],
+        "excludes": [
+            "Kernel.php"
+        ]
+    },
+    "logs": {
+        "text": "php://stdout",
+        "json": "var/log/infection.json"
+    },
+    "mutators": {
+        "@default": true,
+        "@function_signature": false
+    },
+    "testFramework": "phpunit",
+    "minMsi": 90,
+    "minCoveredMsi": 100
+}

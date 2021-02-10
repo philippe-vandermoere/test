@@ -1,0 +1,10 @@
+*
+!/bin/
+!/config/
+!/migrations/
+!/public/
+!/src/
+!/.env
+!/composer.json
+!/composer.lock
+!/symfony.lock

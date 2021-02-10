@@ -1,0 +1,173 @@
+name: CI
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+
+env:
+    TERM: xterm-256color
+
+jobs:
+    phpcs:
+        name: PHP Coding Style
+        runs-on: ubuntu-latest
+        steps:
+            - name: checkout
+              uses: actions/checkout@v2
+
+            - name: setup php
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.0'
+                  extensions: amqp, redis
+                  tools: composer:v2, cs2pr
+
+            - name: cache vendor
+              uses: actions/cache@v2
+              with:
+                  path: vendor
+                  key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+                  restore-keys: |
+                      composer-${{ runner.os }}-${{ hashFiles('composer.*') }}-
+                      composer-${{ runner.os }}-
+                      composer-
+
+            - name: install vendor
+              run: make vendor
+
+            - name: run phpcs
+              run: make phpcs
+
+            - name: autoreview phpcs
+              if: ${{ github.event_name == 'pull_request' && failure() }}
+              run: make phpcs options='--report=checkstyle | cs2pr'
+
+    phpstan:
+        name: PHP Static Analysis
+        runs-on: ubuntu-latest
+        steps:
+            - name: checkout
+              uses: actions/checkout@v2
+
+            - name: setup php
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.0'
+                  extensions: amqp, redis
+                  tools: composer:v2
+
+            - name: cache vendor
+              uses: actions/cache@v2
+              with:
+                  path: vendor
+                  key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+                  restore-keys: |
+                      composer-${{ runner.os }}-${{ hashFiles('composer.*') }}-
+                      composer-${{ runner.os }}-
+                      composer-
+
+            - name: install vendor
+              run: make vendor
+
+            - name: run phpstan
+              run: make phpstan
+
+    phpunit:
+        name: PHP Unit Test
+        runs-on: ubuntu-latest
+        steps:
+            - name: checkout
+              uses: actions/checkout@v2
+
+            - name: setup php
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.0'
+                  extensions: amqp, redis
+                  tools: composer:v2
+                  coverage: xdebug
+
+            - name: cache vendor
+              uses: actions/cache@v2
+              with:
+                  path: vendor
+                  key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+                  restore-keys: |
+                      composer-${{ runner.os }}-${{ hashFiles('composer.*') }}-
+                      composer-${{ runner.os }}-
+                      composer-
+
+            - name: install vendor
+              run: make vendor
+
+            - name: setup matchers github
+              if: ${{ github.event_name == 'pull_request' }}
+              run: echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
+
+            - name: run phpunit
+              run: make phpunit
+
+            - name: upload artefact junit report
+              if: ${{ success() || failure() }}
+              uses: actions/upload-artifact@v2
+              with:
+                  name: junit
+                  path: var/phpunit/junit.xml
+
+            - name: upload artefact code coverage html report
+              uses: actions/upload-artifact@v2
+              with:
+                  name: coverage-html
+                  path: var/phpunit/coverage-html/
+
+            - name: upload artefact code coverage xml report
+              uses: actions/upload-artifact@v2
+              with:
+                  name: coverage-xml
+                  path: var/phpunit/coverage.xml
+
+    infection:
+        name: PHP Mutation Testing
+        runs-on: ubuntu-latest
+        steps:
+            - name: checkout
+              uses: actions/checkout@v2
+
+            - name: setup php
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.0'
+                  extensions: amqp, redis
+                  tools: composer:v2
+                  coverage: xdebug
+
+            - name: cache vendor
+              uses: actions/cache@v2
+              with:
+                  path: vendor
+                  key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+                  restore-keys: |
+                      composer-${{ runner.os }}-${{ hashFiles('composer.*') }}-
+                      composer-${{ runner.os }}-
+                      composer-
+
+            - name: install vendor
+              run: make vendor
+
+            - name: run mutation testing
+              run: make infection
+
+            - name: upload artefact infection report
+              if: ${{ success() || failure() }}
+              uses: actions/upload-artifact@v2
+              with:
+                  name: infection
+                  path: var/log/infection.json
+
+            - name: autoreview mutation testing
+              if: ${{ github.event_name == 'pull_request' && failure() }}
+              run: |
+                  git fetch --depth=1 origin $GITHUB_BASE_REF
+                  make infection options="--git-diff-filter=AM --git-diff-base=origin/$GITHUB_BASE_REF --logger-github --ignore-msi-with-no-mutations --only-covered"
