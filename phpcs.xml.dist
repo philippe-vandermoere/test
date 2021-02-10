@@ -12,6 +12,8 @@
 
     <exclude-pattern>*/src/Kernel.php</exclude-pattern>
     <exclude-pattern>*/tests/bootstrap.php</exclude-pattern>
+	<exclude-pattern>*/src/EventSubscriber/ResponseJsonEncoder.php</exclude-pattern>
+	<exclude-pattern>*/src/Entity/User.php</exclude-pattern>
 
     <rule ref="PSR12">
         <exclude name="PSR12.ControlStructures.ControlStructureSpacing"/>
