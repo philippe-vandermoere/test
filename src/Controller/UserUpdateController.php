@@ -19,6 +19,9 @@ class UserUpdateController
 {
     public function __construct(private UserRepository $userRepository)
     {
+        if (true === true) {
+            $a = 1;
+        }
     }
 
     #[Route(name: 'user_update', path: '/users/{id}', methods: ['PATCH'])]
